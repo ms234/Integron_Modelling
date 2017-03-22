@@ -6,7 +6,7 @@
 n = 3;          % Number of different gene cassettes
 k = 3;          % Number of cassettes in operon
 nStressors = 3 ; % Number of different stressors
-K = 1e4;        % Carrying capacity of the environment
+K = 1e3;        % Carrying capacity of the environment
 n0 = 1e-1;      % Natural death rate
 nI = 1e-3;      % Fitness cost of active integrase
 nS = 3e-1;      % Death rate induced by stressor (e.g. antibiotics)
@@ -108,12 +108,12 @@ MInt(16,11:16) = [0 1/3 0 1/3 0 1/3];
 % ======================================================================
 %% Run the model
 % Parameters for main loop
-tStart = 0; % Start time of currently simulated interval
+tStart = 1; % Start time of currently simulated interval
 tEnd = 0; % End time of currently simulated interval
 initPop = popVec; % Initial populations at start of currently simulated interval
 
 % Parameters for Markov chain describing the stressors
-SVec = binornd(1,0.5,1,nStressors); % Current states of the stressors (0=off, 1=on). Initialise randomly
+SVec = StressArr(1,:); % Current states of the stressors (0=off, 1=on). Initialise randomly
 switchRateMat = sigVel/2*[1/(1-sigMean), 1/sigMean;
                           1/(1-sigMean), 1/sigMean;
                           1/(1-sigMean), 1/sigMean]; % (i,j) contains thet rate of stressor i to switch out of state j
@@ -125,24 +125,24 @@ SMat = []; % Matrix holding in column j the time evolution of stressor j
 tchange = []; %matrix holding the switching times
 
 rng(24)
+stressor_change_index = 1;
 while tEnd<T
     % ----------------------------------------------------------------
     % Compute time we spend in the current environmental state
-    meanSwitchRate = 0;
-    switchProbVec = zeros(1,nStressors);
-    for s = 1:nStressors
-        switchProbVec(s) = switchRateMat(s,SVec(s)+1); % Rate (Probability?) of stressor s switching out of its current state
-        meanSwitchRate = meanSwitchRate + switchProbVec(s);
-    end
+    %meanSwitchRate = 0;
+    %switchProbVec = zeros(1,nStressors);
+    %for s = 1:nStressors
+     %   switchProbVec(s) = switchRateMat(s,SVec(s)+1); % Rate (Probability?) of stressor s switching out of its current state
+      %  meanSwitchRate = meanSwitchRate + switchProbVec(s);
+    %end
     
-    r = rand(1);
-    meanTimetoNextSwitch = 1/meanSwitchRate;
-    waitingTime = meanTimetoNextSwitch*log(1/r); % Time we stay ('wait') in the current environmental conditions
-    tchange = [tchange;waitingTime];
+    %r = rand(1);
+    %meanTimetoNextSwitch = 1/meanSwitchRate;
+    %waitingTime = meanTimetoNextSwitch*log(1/r); % Time we stay ('wait') in the current environmental conditions
+    waitingTime = t_change(stressor_change_index);
     % ----------------------------------------------------------------
     % Now simulate the ODEs in this interval
     tEnd = min(tStart+waitingTime,T); % End time of current interval
-    
     % Function defining the model equations
     modelEqs = @(t,x) basicModelEqs(x,nGenTypes, K, n0, nI, rho, theta, mu, resistLevelMat, MExc, MInt, SVec);
 
@@ -153,21 +153,22 @@ while tEnd<T
     tVec = [tVec;tVectmp]; % Append time points at which Matlab obtained simulation results. NOTE: these are not necessarily equally spaced, as ode45 adapts its time step!
     ResultsMat = [ResultsMat; resultstmp]; % Append time evolution of the populations during this interval to overall results
     SMattmp = ones(length(tVectmp), nStressors); % Append current state of the stressors. This is slightly inefficient but makes plotting later easier.
-    SMattmp(:,1) = SVec(1);
-    SMattmp(:,2) = SVec(2);    
-    SMattmp(:,3) = SVec(3);
+    SMattmp(:,1) = StressArr(tStart,1);
+    SMattmp(:,2) = StressArr(tStart,2);    
+    SMattmp(:,3) = StressArr(tStart,3);
     SMat = [SMat; SMattmp];
     
     % ----------------------------------------------------------------
     % Advance to the next interval
     tStart = tEnd; % Starting time of next interval will be the end time of the current interval
     initPop = ResultsMat(end,:)'; % Starting population of next interval will be the final population of the current interval
-    
+    stressor_change_index =  stressor_change_index +1;
+    SVec = StressArr(tEnd+1,:);
     % Decide which stressor changes its state (i.e. turns on or off) and update environmental
     % conditions for next interval
-    switchProbVec = switchProbVec/meanSwitchRate; % Normalise so that they are true probabilities
-    switchingStressorId = find(mnrnd(1,switchProbVec)); % Choose the stressor that switches by drawing from the corresponding multinomial distribution
-    SVec(switchingStressorId) = mod(SVec(switchingStressorId)+1,2); % Perform the switch    
+    %switchProbVec = switchProbVec/meanSwitchRate; % Normalise so that they are true probabilities
+    %switchingStressorId = find(mnrnd(1,switchProbVec)); % Choose the stressor that switches by drawing from the corresponding multinomial distribution
+    %SVec(switchingStressorId) = mod(SVec(switchingStressorId)+1,2); % Perform the switch    
 end
 
 % ======================================================================
@@ -193,13 +194,13 @@ for g = 1:nGenTypes
 %     axis([0,T,0,K]);
 end
 print('genotype_evolution','-dpdf','-fillpage')
-close 1
 shg
 %% As in Figure 1 in the paper
 figure(2)
 clf
 subplot(2,1,1)
-imagesc(SMat')
+imagesc([0 T], [0 3],SMat')
+%plot(tVec, SMat(:,1), tVec, SMat(:,2), tVec, SMat(:,3))
 colorbar
 title('Stressors')
 % legend('Stressor 1 (1=on, 0=off)','Stressor 2 (1=on, 0=off)','Stressor 3 (1=on, 0=off)')
@@ -220,16 +221,19 @@ for g = 1:nGenTypes
     end     
 end
 
+totPop = sum(ResultsMat,2);
 fracWithFunctIntegrase = sum(ResultsMat(:,1:nGenTypes),2)./sum(ResultsMat,2);
-
+fracPopwithGene1InFirstPos = totPopwithGene1InFirstPos./totPop
+fracPopwithGene2InFirstPos = totPopwithGene2InFirstPos./totPop
+fracPopwithGene3InFirstPos = totPopwithGene3InFirstPos./totPop
 % Plot it
-plot(tVec,totPopwithGene1InFirstPos,'LineWidth',2,'LineStyle','-')
+plot(tVec,fracPopwithGene1InFirstPos,'LineWidth',2,'LineStyle','-')
 hold on
-plot(tVec,totPopwithGene2InFirstPos,'LineWidth',2,'LineStyle','-')
-plot(tVec,totPopwithGene3InFirstPos,'LineWidth',2,'LineStyle','-')
+plot(tVec,fracPopwithGene2InFirstPos,'LineWidth',2,'LineStyle','-')
+plot(tVec,fracPopwithGene3InFirstPos,'LineWidth',2,'LineStyle','-')
 % title(['Genotype ' num2str(genTypeMatrix(g,:))])
 yyaxis left
-axis([0,T,0,K]);
+axis([0,T,0,1]);
 yyaxis right
 plot(tVec,fracWithFunctIntegrase,'LineWidth',2,'LineStyle','--')
 hold off

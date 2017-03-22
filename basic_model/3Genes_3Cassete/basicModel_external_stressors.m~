@@ -125,20 +125,21 @@ SMat = []; % Matrix holding in column j the time evolution of stressor j
 tchange = []; %matrix holding the switching times
 
 rng(24)
+stressor_change_index = 1;
 while tEnd<T
     % ----------------------------------------------------------------
     % Compute time we spend in the current environmental state
-    meanSwitchRate = 0;
-    switchProbVec = zeros(1,nStressors);
-    for s = 1:nStressors
-        switchProbVec(s) = switchRateMat(s,SVec(s)+1); % Rate (Probability?) of stressor s switching out of its current state
-        meanSwitchRate = meanSwitchRate + switchProbVec(s);
-    end
+    %meanSwitchRate = 0;
+    %switchProbVec = zeros(1,nStressors);
+    %for s = 1:nStressors
+     %   switchProbVec(s) = switchRateMat(s,SVec(s)+1); % Rate (Probability?) of stressor s switching out of its current state
+      %  meanSwitchRate = meanSwitchRate + switchProbVec(s);
+    %end
     
-    r = rand(1);
-    meanTimetoNextSwitch = 1/meanSwitchRate;
-    waitingTime = meanTimetoNextSwitch*log(1/r); % Time we stay ('wait') in the current environmental conditions
-    tchange = [tchange;waitingTime];
+    %r = rand(1);
+    %meanTimetoNextSwitch = 1/meanSwitchRate;
+    %waitingTime = meanTimetoNextSwitch*log(1/r); % Time we stay ('wait') in the current environmental conditions
+    waitingTime = t_change(stressor_change_index);
     % ----------------------------------------------------------------
     % Now simulate the ODEs in this interval
     tEnd = min(tStart+waitingTime,T); % End time of current interval
@@ -153,7 +154,7 @@ while tEnd<T
     tVec = [tVec;tVectmp]; % Append time points at which Matlab obtained simulation results. NOTE: these are not necessarily equally spaced, as ode45 adapts its time step!
     ResultsMat = [ResultsMat; resultstmp]; % Append time evolution of the populations during this interval to overall results
     SMattmp = ones(length(tVectmp), nStressors); % Append current state of the stressors. This is slightly inefficient but makes plotting later easier.
-    SMattmp(:,1) = SVec(1);
+    SMattmp(:,1) = Stress;
     SMattmp(:,2) = SVec(2);    
     SMattmp(:,3) = SVec(3);
     SMat = [SMat; SMattmp];
@@ -162,12 +163,13 @@ while tEnd<T
     % Advance to the next interval
     tStart = tEnd; % Starting time of next interval will be the end time of the current interval
     initPop = ResultsMat(end,:)'; % Starting population of next interval will be the final population of the current interval
+    stressor_change_index =  stressor_change_index +1;
     
     % Decide which stressor changes its state (i.e. turns on or off) and update environmental
     % conditions for next interval
-    switchProbVec = switchProbVec/meanSwitchRate; % Normalise so that they are true probabilities
-    switchingStressorId = find(mnrnd(1,switchProbVec)); % Choose the stressor that switches by drawing from the corresponding multinomial distribution
-    SVec(switchingStressorId) = mod(SVec(switchingStressorId)+1,2); % Perform the switch    
+    %switchProbVec = switchProbVec/meanSwitchRate; % Normalise so that they are true probabilities
+    %switchingStressorId = find(mnrnd(1,switchProbVec)); % Choose the stressor that switches by drawing from the corresponding multinomial distribution
+    %SVec(switchingStressorId) = mod(SVec(switchingStressorId)+1,2); % Perform the switch    
 end
 
 % ======================================================================
