@@ -3,24 +3,24 @@
 % model.
 % ========================================================================
 % Parameters
-K = 1e3; % Carrying capacity
-T = 100; % Length of simulation
+K = 1e4; % Carrying capacity
+T = 1000; % Length of simulation
 n = 3; % Number of different cassettes
 k = 3; % Size of the integron
 nStressors = 3; % Number of different stressors
-N0 = 10; % Initial number of cells
-rho = 0.05;     % Casette-Reshuffling rate by integrase
+N0 = 1000; % Initial number of cells
+rho = 1e-3;     % Casette-Reshuffling rate by integrase
 theta = 0.5;    % Rate at which the integrase reinserts exciced cassettes
 d0 = 1e-1;      % Natural death rate
 dI = 1e-3;      % Fitness cost of active integrase
-dS = 0.5;      % Death rate induced by stressor (e.g. antibiotics)
+dS = 0.3;      % Death rate induced by stressor (e.g. antibiotics)
 beta = 0.5;     % Parameter determining how fast gene expression declines with increasing distance from promoter
 gamma = 0.5;    % Shape parameter determining how expression level of a resistance gene affects death rate
-mu = 1e-3;     % Mutation rate (from functional to non-funcitonal integrase)
+mu = 1e-5;     % Mutation rate (from functional to non-funcitonal integrase)
 
 % Parameters for the Markov chain simulating the changing environment
-sigma_m = 0.4; % average fraction of time that a stressor is present
-sigma_v = 0.01; % average rate of switches between presence and absence
+sigma_m = 2e-1; % average fraction of time that a stressor is present
+sigma_v = 1e-2; % average rate of switches between presence and absence
 M = sigma_v / 2 * [1 - (1/(1-sigma_m)),1/(1-sigma_m);1/sigma_m, 1 - 1/sigma_m]; % transition matrix
 lam = zeros(1,3); % initialise rates at which stressors change
 lam_prob = zeros(1,3); % probabilities that 1 of the three stressors change
@@ -87,7 +87,7 @@ for t = 1:T
         % Death check
         stressor_stress = 0;
         for idStressor =1:nStressors %stressor induced increase in death rate
-        if StressArr(T,idStressor)~=0 %check if stressor is present
+        if StressArr(t,idStressor)~=0 %check if stressor is present
             Etot = 0; % Expression of resistance genes for that stressor
             for cassette=1:k % cassetteindicates cassette position)
                 if currPopArr(c).Genotype(cassette) == idStressor

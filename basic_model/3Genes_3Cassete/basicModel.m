@@ -6,7 +6,7 @@
 n = 3;          % Number of different gene cassettes
 k = 3;          % Number of cassettes in operon
 nStressors = 3 ; % Number of different stressors
-K = 1e9;        % Carrying capacity of the environment
+K = 1e4;        % Carrying capacity of the environment
 n0 = 1e-1;      % Natural death rate
 nI = 1e-3;      % Fitness cost of active integrase
 nS = 3e-1;      % Death rate induced by stressor (e.g. antibiotics)
@@ -21,7 +21,7 @@ mu = 1e-5;      % Mutation rate from functional to non-functional integrase
 % ======================================================================
 %% Initialise variables
 t0 = 0;                             % Starting time of simulation
-T = 1e4;                            % End time
+T = 1e3;                            % End time
 dt = 1e-1;                          % Time step
 NTimesteps = T/dt;                  % Number of time steps
 nGenTypes = computeNGentypes(n,k);  % Number of genotypes
@@ -30,7 +30,7 @@ YMat = zeros(nGenTypes,1); % Matrix containing the time evolution of population 
 SVec = zeros(1,1);                  % Vector of the presence/absence of stressor i
 
 % Initial conditions
-XMat(11) = 1e6;
+XMat(11) = 1e3;
 % YMat() = [0 0 0 0 0];
 popVec = [XMat; YMat];
 
