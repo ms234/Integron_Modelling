@@ -8,22 +8,25 @@ T = 1000; % Length of simulation
 n = 3; % Number of different cassettes
 k = 3; % Size of the integron
 nStressors = 3; % Number of different stressors
-N0 = 10; % Initial number of cells
-rho = 0.05;     % Casette-Reshuffling rate by integrase
+N0 = 1000; % Initial number of cells
+rho = 1e-3;     % Casette-Reshuffling rate by integrase
 theta = 0.5;    % Rate at which the integrase reinserts exciced cassettes
 d0 = 1e-1;      % Natural death rate
 dI = 1e-3;      % Fitness cost of active integrase
-dS = 0.5;      % Death rate induced by stressor (e.g. antibiotics)
+dS = 0.3;      % Death rate induced by stressor (e.g. antibiotics)
 beta = 0.5;     % Parameter determining how fast gene expression declines with increasing distance from promoter
 gamma = 0.5;    % Shape parameter determining how expression level of a resistance gene affects death rate
-mu = 1e-3;     % Mutation rate (from functional to non-funcitonal integrase)
+mu = 1e-5;     % Mutation rate (from functional to non-funcitonal integrase)
+SOS_Response = false; %say if we take into account the SOS_response or not
+phi = 0.2;      % Threshold level of stress-induced death above which the integrase becomes active
 
 % Parameters for the Markov chain simulating the changing environment
-sigma_m = 0.4; % average fraction of time that a stressor is present
-sigma_v = 0.01; % average rate of switches between presence and absence
+sigma_m = 2e-1; % average fraction of time that a stressor is present
+sigma_v = 1e-2; % average rate of switches between presence and absence
 M = sigma_v / 2 * [1 - (1/(1-sigma_m)),1/(1-sigma_m);1/sigma_m, 1 - 1/sigma_m]; % transition matrix
 lam = zeros(1,3); % initialise rates at which stressors change
 lam_prob = zeros(1,3); % probabilities that 1 of the three stressors change
+newEnvironment = false; 
 
 % ========================================================================
 % Intialisation
@@ -55,30 +58,30 @@ newPopArr = currPopArr; % Array to hold the cells at the next time step. Used in
 
 % Initialisation of variables for simulation of the stressors
 
-StressArr = zeros(T, nStressors);
-StressArr(:,1) = 1; % Stressor 1 on constantly
+
+ %Stressors, run each chain independently
+ if newEnvironment % see if we create a new environment or use a externally created one
+     StressArr = zeros(T, nStressors);
+ for t = 1:T
+     for i = 1:nStressors
+      r = rand(1); 
+               if StressArr(t,i) == 0
+                   lam(i) = M(1,2);
+               else
+                  lam(i) = M(2,1); 
+               end             
+                if r<lam(i)
+                   StressArr(t+1,i) = mod(StressArr(t,i)+1,2); % stressor changes if probability is greater than a random number
+                else
+                    StressArr(t+1,i) = StressArr(t,i); % stressor remains the same
+                end
+     end
+ end
+ end
 
 % ========================================================================
 % Main loop
 for t = 1:T
-    
-    % Stressors, run each chain independently
-    
-%     for i = 1:nStressors
-%        r = rand(1); 
-%                if StressArr(t,i) == 0
-%                   lam(i) = M(1,2);
-%                else
-%                   lam(i) = M(2,1); 
-%                end
-%                
-%                if r<lam(i)
-%                    StressArr(t+1,i) = mod(StressArr(t,i)+1,2); % stressor changes if probability is greater than a random number
-%                else
-%                    StressArr(t+1,i) = StressArr(t,i); % stressor remains the same
-%                end
-%     end
-    
     CellIdxAtNextTime = 1; % Index of current cell in newPopArr
     
     for c = 1 : N
@@ -98,7 +101,7 @@ for t = 1:T
         end
         end
         integrase_stress = 0;
-        if currPopArr(c).FunctIntegrase==1 %additionnal death rate due to functioning integrase
+        if currPopArr(c).FunctIntegrase==1 && (stressor_stress > phi || ~SOS_Response)%additionnal death rate due to functioning integrase
             integrase_stress = dI;
         end
         death_rate = d0 + stressor_stress + integrase_stress; 
@@ -134,7 +137,7 @@ for t = 1:T
         % integrase is active and if it is active, draw a random number to
         % choose if reshuffling occurs.
         numberGenesInCasette = sum(currPopArr(c).Genotype~=0);
-        doesReshufflingOccur = (currPopArr(c).FunctIntegrase == 1) & (rand(1)<rho) & (numberGenesInCasette>0);
+        doesReshufflingOccur = (currPopArr(c).FunctIntegrase == 1) & (rand(1)<rho) & (numberGenesInCasette>0) & (stressor_stress > phi || ~SOS_Response);
 
         if (doesReshufflingOccur==1) 
             % Choose which cassette to excise. Assume this cassette is chosen
@@ -209,7 +212,7 @@ end
 % Visualise and analyse results
 
 % visualise stressors
-figure(1)
+figure(4)
 clf
 %subplot(8+1,2,[1 2])
 subplot(3,1,1) 
@@ -226,7 +229,7 @@ gen3 = sum(sum(Genotypes(:,4,:,:),4),3);
 gen4 = sum(sum(Genotypes(:,1,:,:),4),3);
 plot(time,gen1./Ncells,time,gen2./Ncells,time,gen3./Ncells,time,gen4./Ncells);
 legend('Gene 1 in First Position','Gene 2 in First Position', 'Gene 3 in First Position', 'Empty Cassette')
-
+xlim([0,T]);
 %integrase vs total number of cells
 subplot(3,1,3)
 plot(time,Nintegron,'--');
@@ -234,3 +237,4 @@ hold on
 plot(time, Ncells);
 hold off
 legend('Number of Bacteria with Functional Integrase','Total Number of Cells')
+xlim([0,T]);
